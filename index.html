@@ -3,11 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compress PDF – High Quality</title>
 
-<title>Compress PDF | High Quality PDF Compressor</title>
-
+<!-- Tailwind -->
 <script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Lucide Icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
+
+<!-- PDF-LIB -->
 <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
 
 <style>
@@ -18,51 +22,60 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; background:#f8fafc; }
 
 <body class="text-slate-800">
 
-<!-- Header -->
-<div class="max-w-5xl mx-auto p-6 text-center">
+<!-- HEADER -->
+<div class="max-w-4xl mx-auto px-6 pt-10 text-center">
   <h1 class="text-3xl font-extrabold">Compress PDF</h1>
   <p class="text-slate-500 mt-2">
-    Reduce PDF size without losing text quality. Smart image compression, fully private.
+    Reduce PDF file size while keeping text sharp and readable.
   </p>
 </div>
 
-<!-- Upload Box -->
-<div id="uploadBox" class="max-w-3xl mx-auto mt-10">
-  <div id="dropZone" class="bg-white border-2 border-dashed border-slate-300 rounded-2xl p-14 text-center cursor-pointer hover:bg-red-50 transition">
-    <input id="fileInput" type="file" accept="application/pdf" hidden />
+<!-- UPLOAD -->
+<div id="uploadBox" class="max-w-2xl mx-auto mt-12 px-6">
+  <div id="dropZone"
+    class="bg-white border-2 border-dashed border-slate-300 rounded-2xl p-14 text-center cursor-pointer hover:bg-red-50 transition">
+    
+    <input id="fileInput" type="file" accept="application/pdf" hidden>
+
     <div class="mx-auto mb-4 bg-red-100 w-16 h-16 rounded-full flex items-center justify-center text-red-600">
       <i data-lucide="file-down"></i>
     </div>
+
     <button class="bg-red-600 text-white px-8 py-3 rounded-xl font-bold">
       Select PDF File
     </button>
+
     <p class="text-xs text-slate-400 mt-4 uppercase tracking-widest">
       or drop PDF here
     </p>
   </div>
 </div>
 
-<!-- Workspace -->
-<div id="workspace" class="hidden max-w-5xl mx-auto mt-14 grid md:grid-cols-3 gap-10 px-6">
+<!-- WORKSPACE -->
+<div id="workspace" class="hidden max-w-4xl mx-auto mt-14 px-6 grid md:grid-cols-3 gap-8">
 
-  <!-- File Info -->
+  <!-- FILE INFO -->
   <div class="md:col-span-2 bg-white rounded-3xl border p-8">
-    <h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2">
-      <i data-lucide="file-text"></i> Uploaded File
+    <h3 class="font-bold mb-4 flex items-center gap-2">
+      <i data-lucide="file-text"></i> File Details
     </h3>
-    <div id="fileInfo" class="text-sm text-slate-500"></div>
+    <div id="fileInfo" class="text-sm text-slate-600"></div>
   </div>
 
-  <!-- Settings -->
+  <!-- SETTINGS -->
   <div class="bg-white rounded-3xl border p-8 sticky top-10">
     <h4 class="font-bold mb-6 flex items-center gap-2">
-      <i data-lucide="settings"></i> Compression Level
+      <i data-lucide="settings"></i> Compression
     </h4>
 
-    <select id="quality" class="w-full border rounded-xl p-3 font-semibold">
-      <option value="0.85">High Quality (Recommended)</option>
-      <option value="0.6">Medium Compression</option>
-      <option value="0.4">Strong Compression</option>
+    <label class="text-xs font-bold uppercase text-slate-400 block mb-2">
+      Compression Mode
+    </label>
+
+    <select id="mode" class="w-full border rounded-xl p-3 font-semibold">
+      <option value="high">High Quality (Safe)</option>
+      <option value="balanced">Balanced</option>
+      <option value="strong">Strong</option>
     </select>
 
     <button id="compressBtn"
@@ -73,9 +86,11 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; background:#f8fafc; }
     <div id="loading" class="hidden text-center mt-6">
       <div class="animate-spin h-6 w-6 mx-auto border-2 border-slate-200 border-t-red-600 rounded-full"></div>
       <p class="text-xs mt-2 text-slate-400 font-bold uppercase tracking-widest">
-        Compressing…
+        Processing…
       </p>
     </div>
+
+    <div id="result" class="hidden mt-6 text-xs bg-slate-50 border rounded-xl p-4"></div>
   </div>
 </div>
 
@@ -83,6 +98,7 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; background:#f8fafc; }
 lucide.createIcons();
 
 const { PDFDocument } = PDFLib;
+
 const fileInput = document.getElementById('fileInput');
 const dropZone = document.getElementById('dropZone');
 const uploadBox = document.getElementById('uploadBox');
@@ -90,59 +106,93 @@ const workspace = document.getElementById('workspace');
 const fileInfo = document.getElementById('fileInfo');
 const compressBtn = document.getElementById('compressBtn');
 const loading = document.getElementById('loading');
+const resultBox = document.getElementById('result');
+const modeSelect = document.getElementById('mode');
 
-let pdfFile;
+let pdfFile = null;
 
+// Upload handlers
 dropZone.onclick = () => fileInput.click();
-fileInput.onchange = e => loadPDF(e.target.files[0]);
 
-dropZone.ondragover = e => { e.preventDefault(); dropZone.classList.add('bg-red-50'); };
+fileInput.onchange = e => {
+  if (e.target.files.length) loadPDF(e.target.files[0]);
+};
+
+dropZone.ondragover = e => {
+  e.preventDefault();
+  dropZone.classList.add('bg-red-50');
+};
+
 dropZone.ondragleave = () => dropZone.classList.remove('bg-red-50');
+
 dropZone.ondrop = e => {
   e.preventDefault();
   dropZone.classList.remove('bg-red-50');
-  loadPDF(e.dataTransfer.files[0]);
+  if (e.dataTransfer.files.length) loadPDF(e.dataTransfer.files[0]);
 };
 
 function loadPDF(file) {
-  if (!file || file.type !== 'application/pdf') return;
+  if (file.type !== 'application/pdf') {
+    alert('Please upload a PDF file');
+    return;
+  }
   pdfFile = file;
   uploadBox.classList.add('hidden');
   workspace.classList.remove('hidden');
+
   fileInfo.innerHTML = `
     <strong>${file.name}</strong><br>
-    Size: ${(file.size/1024/1024).toFixed(2)} MB
+    Original Size: ${(file.size / 1024 / 1024).toFixed(2)} MB
   `;
 }
 
+// Compress
 compressBtn.onclick = async () => {
   compressBtn.classList.add('hidden');
   loading.classList.remove('hidden');
+  resultBox.classList.add('hidden');
 
-  const quality = parseFloat(document.getElementById('quality').value);
+  const originalSize = pdfFile.size;
+  const mode = modeSelect.value;
+
   const bytes = await pdfFile.arrayBuffer();
   const pdfDoc = await PDFDocument.load(bytes);
 
-  const pages = pdfDoc.getPages();
-  for (const page of pages) {
-    const images = page.node.Resources()?.XObject();
-    if (!images) continue;
+  // Compression strategy
+  let saveOptions = { useObjectStreams: true };
 
-    for (const key of images.keys()) {
-      const img = images.lookup(key);
-      if (!img || !img.contents) continue;
-    }
- reminder: pdf-lib image recompression is structural rebuild (browser limit)
+  if (mode === 'balanced') {
+    saveOptions.compress = true;
   }
 
-  const compressedPdf = await pdfDoc.save({ useObjectStreams: true });
-  const blob = new Blob([compressedPdf], { type: 'application/pdf' });
+  if (mode === 'strong') {
+    saveOptions.compress = true;
+    saveOptions.objectsPerTick = 20;
+  }
+
+  const compressedBytes = await pdfDoc.save(saveOptions);
+
+  const newSize = compressedBytes.byteLength;
+  const reduction = (((originalSize - newSize) / originalSize) * 100).toFixed(1);
+
+  // Download
+  const blob = new Blob([compressedBytes], { type: 'application/pdf' });
   const url = URL.createObjectURL(blob);
 
   const a = document.createElement('a');
   a.href = url;
   a.download = 'compressed.pdf';
   a.click();
+
+  // Result UI
+  resultBox.innerHTML = `
+    <strong>Compression Result</strong><br><br>
+    Original: ${(originalSize / 1024 / 1024).toFixed(2)} MB<br>
+    Compressed: ${(newSize / 1024 / 1024).toFixed(2)} MB<br>
+    Reduction: <strong>${reduction}%</strong><br>
+    Mode: ${mode}
+  `;
+  resultBox.classList.remove('hidden');
 
   compressBtn.classList.remove('hidden');
   loading.classList.add('hidden');
